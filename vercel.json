@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/process-photo.ts": {
+      "maxDuration": 60
+    }
+  }
+}
