@@ -64,6 +64,23 @@ ${SHARED_RULES}
 OUTPUT: A clean side-profile catalog product photo on pure white, suitable for a Shopify listing.`,
 };
 
+// ---- Helpers -------------------------------------------------------------
+
+function detectMimeType(base64: string): string {
+  try {
+    const buf = Buffer.from(base64.slice(0, 48), "base64");
+    const b = (i: number) => buf[i] ?? 0;
+    if (b(0) === 0xff && b(1) === 0xd8) return "image/jpeg";
+    if (b(0) === 0x89 && b(1) === 0x50 && b(2) === 0x4e && b(3) === 0x47) return "image/png";
+    if (
+      b(0) === 0x52 && b(1) === 0x49 && b(2) === 0x46 && b(3) === 0x46 &&
+      b(8) === 0x57 && b(9) === 0x45 && b(10) === 0x42 && b(11) === 0x50
+    ) return "image/webp";
+    if (b(4) === 0x66 && b(5) === 0x74 && b(6) === 0x79 && b(7) === 0x70) return "image/heic";
+  } catch {}
+  return "image/jpeg";
+}
+
 // ---- Handler -------------------------------------------------------------
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -95,14 +112,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Strip a data URL prefix if the shortcut sends one.
-    const base64 = image.includes(",") ? image.split(",")[1] : image;
+    // Strip a data URL prefix if the shortcut sends one, then remove any whitespace.
+    const rawBase64 = image.includes(",") ? image.split(",")[1] : image;
+    const base64 = rawBase64.replace(/\s+/g, "");
+    const mimeType = detectMimeType(base64);
 
     const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent",
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": process.env.GEMINI_API_KEY || "",
+        },
         body: JSON.stringify({
           contents: [
             {
@@ -110,7 +132,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 { text: prompt },
                 {
                   inline_data: {
-                    mime_type: "image/jpeg",
+                    mime_type: mimeType,
                     data: base64,
                   },
                 },
