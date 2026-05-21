@@ -1,7 +1,10 @@
 // api/process-photo.ts
 // Receives an image + item type from the iOS Shortcut, runs it through
-// Gemini 2.5 Flash Image with the matching catalog prompt, returns the
-// processed image as base64.
+// Gemini 2.5 Flash Image with the matching catalog prompt(s), and returns
+// one or more processed images as base64.
+//
+// Tops produce TWO images (ghost mannequin + flat lay).
+// Jeans and shoes produce ONE image each (clean overhead flat lay).
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
@@ -14,8 +17,7 @@ CRITICAL RULES — DO NOT:
 - Modify the fit, length, or proportions
 - Add or remove any details (buttons, stitching, tags, trim, prints, pockets, laces, hardware)
 - Smooth, retouch, or "improve" the texture
-- Reinvent or guess at pattern details — preserve the original exactly, including stripe count, floral placement, plaid alignment, and graphic positioning
-- Add a mannequin, hanger, model, foot, leg, or any other object to the final image
+- Reinvent or guess at pattern details — preserve the original exactly, including stripe count, stripe spacing, floral placement, plaid alignment, and graphic positioning
 
 Background: pure white seamless (#FFFFFF) — no texture, no gradient, no color cast.
 Lighting: soft, even, diffused studio light. No harsh shadows.
@@ -23,62 +25,162 @@ Shadow: add a subtle, soft grounding shadow directly beneath the item for natura
 Color-correct the item to true-to-life only if the original has an obvious color cast from poor lighting.
 `;
 
-const PROMPTS: Record<string, string> = {
-  top: `You are processing a product photo for an online clothing boutique. The garment must remain 100% faithful to the original — this is a real product a customer will receive.
+const TOP_INTRO = `You are processing a product photo for an online clothing boutique. The garment must remain 100% faithful to the original — this is a real product a customer will receive.
 
-SUBJECT: The top (shirt, blouse, sweater, tee, tank, cardigan, jacket, etc.) is the only product being photographed. Remove all other clothing items (pants, shorts, skirts, shoes, belts, hats, scarves, bags, jewelry, accessories). Remove any mannequin, hanger, model, or person. Only the top should remain.
+SUBJECT: The top (shirt, blouse, sweater, tee, tank, cardigan, jacket, etc.) is the only product being photographed. Remove all other clothing items (pants, shorts, skirts, shoes, belts, hats, scarves, bags, jewelry, accessories). Remove any mannequin, hanger, model, person, surface, or background clutter. Only the top should remain.`;
+
+// Each item type maps to an ordered list of { style, prompt }.
+// The Shortcut just sends the itemType; the server runs every style for it.
+type StylePrompt = { style: string; prompt: string };
+
+const PROMPTS: Record<string, StylePrompt[]> = {
+  top: [
+    {
+      style: "ghost",
+      prompt: `${TOP_INTRO}
 
 TASK:
 1. Isolate the top as described above.
-2. Convert the image into a FLAT LAY presentation regardless of how it was originally photographed (hanger, mannequin, model, or already flat).
-3. Present the top from a directly overhead (top-down) viewpoint, laid flat and symmetrical.
-4. Lay it out neatly: centered, symmetrical (left/right mirror), sleeves slightly extended outward, hem flat and even, neckline visible and naturally shaped, no wrinkles or bunching from previous display.
+2. Present the top as a "ghost mannequin" / invisible-mannequin product photo: the garment should look as though worn by an invisible person, viewed straight-on from the front.
+3. Give it natural three-dimensional shape:
+   - Gentle volume through the body so it isn't pressed flat
+   - Soft, natural fabric folds and drape (not stiff, not heavily wrinkled)
+   - The neckline open and rounded as it would sit on a body
+   - Sleeves filled with subtle dimension, falling naturally at the sides or slightly outward
+   - A soft hollow at the neckline showing the inside back collar, as is standard for ghost-mannequin shots
+4. Keep the garment centered and symmetrical, with a clean, professional silhouette.
 
 ${SHARED_RULES}
-OUTPUT: A clean overhead flat-lay catalog product photo on pure white, suitable for a Shopify listing.`,
+OUTPUT: A clean ghost-mannequin catalog product photo on pure white, suitable for a Shopify listing.`,
+    },
+  ],
 
-  jeans: `You are processing a product photo for an online clothing boutique. The garment must remain 100% faithful to the original — this is a real product a customer will receive.
+  jeans: [
+    {
+      style: "flatlay",
+      prompt: `You are processing a product photo for an online clothing boutique. The garment must remain 100% faithful to the original — this is a real product a customer will receive.
 
-SUBJECT: The bottoms (jeans, pants, shorts, leggings, skirt) are the only product being photographed. Remove all other clothing items (tops, shoes, belts unless the belt is sold with the item, accessories). Remove any mannequin, hanger, model, or person. Only the bottoms should remain.
+SUBJECT: The bottoms (jeans, pants, shorts, leggings, skirt) are the only product being photographed. Remove all other clothing items (tops, shoes, belts unless the belt is sold with the item, accessories). Remove any mannequin, hanger, model, person, surface, or background clutter. Only the bottoms should remain.
 
 TASK:
 1. Isolate the bottoms as described above.
 2. Convert the image into a FLAT LAY presentation regardless of how it was originally photographed.
 3. Present the bottoms from a directly overhead (top-down) viewpoint, laid flat and symmetrical.
-4. Lay them out neatly: centered, legs together and straight (or very slightly tapered as the cut dictates), waistband flat and fully visible at the top, no wrinkles or bunching from previous display. Preserve the true rise, inseam length, and leg opening width.
+4. Lay them out neatly: centered, legs together and straight (or very slightly tapered as the cut dictates), waistband flat and fully visible at the top, with soft natural folds for a styled look. Preserve the true rise, inseam length, and leg opening width.
 
 ${SHARED_RULES}
 OUTPUT: A clean overhead flat-lay catalog product photo on pure white, suitable for a Shopify listing.`,
+    },
+  ],
 
-  shoes: `You are processing a product photo for an online footwear boutique. The shoe must remain 100% faithful to the original — this is a real product a customer will receive.
+  shoes: [
+    {
+      style: "profile",
+      prompt: `You are processing a product photo for an online footwear boutique. The shoe must remain 100% faithful to the original — this is a real product a customer will receive.
 
-SUBJECT: The shoe/footwear (boot, sandal, sneaker, heel, flat, etc.) is the only product being photographed. Remove any foot, leg, mannequin, box, stand, or other object. If a matching pair is shown, keep both shoes; otherwise keep the single shoe.
+SUBJECT: The shoe/footwear (boot, sandal, sneaker, heel, flat, etc.) is the only product being photographed. Remove any foot, leg, mannequin, box, stand, surface, or background clutter. If a matching pair is shown, keep both shoes; otherwise keep the single shoe.
 
 TASK:
 1. Isolate the footwear as described above.
-2. Present it as a clean side-profile product shot (the standard footwear catalog angle), viewed from the outer/lateral side, toe pointing to the left, sitting level as if on an invisible flat surface. This is NOT a flat lay — it is a side-profile view.
-3. If a pair is shown, place both shoes side by side at the same angle, slightly overlapping or staggered as is standard for catalog footwear, both toes pointing left.
+2. Present it as a clean side / three-quarter angled product shot (the standard footwear catalog angle), viewed slightly from the front-outer side so both the profile and a hint of the toe are visible, toe pointing to the left, sitting level as if on an invisible flat surface.
+3. If a pair is shown, place both shoes side by side at the same angle, slightly staggered as is standard for catalog footwear, both toes pointing left.
 4. Preserve the true silhouette, heel height, sole thickness, laces, buckles, straps, and all hardware exactly.
 
 ${SHARED_RULES}
-OUTPUT: A clean side-profile catalog product photo on pure white, suitable for a Shopify listing.`,
+OUTPUT: A clean side/angled-profile catalog product photo on pure white, suitable for a Shopify listing.`,
+    },
+  ],
 };
 
 // ---- Helpers -------------------------------------------------------------
 
+// Identify the image format from the leading bytes of the base64 data so we
+// can tell Gemini the correct mime type. Covers the formats an iPhone or
+// browser will realistically produce.
 function detectMimeType(base64: string): string {
-  try {
-    const buf = Buffer.from(base64.slice(0, 48), "base64");
-    const b = (i: number) => buf[i] ?? 0;
-    if (b(0) === 0xff && b(1) === 0xd8) return "image/jpeg";
-    if (b(0) === 0x89 && b(1) === 0x50 && b(2) === 0x4e && b(3) === 0x47) return "image/png";
+  // Decode just the first chunk of bytes — enough to read file signatures.
+  const head = Buffer.from(base64.slice(0, 64), "base64");
+  const bytes = Array.from(head.subarray(0, 16));
+  const hex = bytes.map((b: number) => b.toString(16).padStart(2, "0")).join("");
+
+  // JPEG: starts FF D8 FF
+  if (hex.startsWith("ffd8ff")) return "image/jpeg";
+  // PNG: 89 50 4E 47
+  if (hex.startsWith("89504e47")) return "image/png";
+  // WebP: "RIFF"...."WEBP"
+  if (hex.startsWith("52494646") && hex.includes("57454250"))
+    return "image/webp";
+  // HEIC/HEIF: bytes 4-8 are "ftyp", followed by a brand like heic/heif/mif1
+  const ascii = head.toString("ascii");
+  if (ascii.includes("ftyp")) {
     if (
-      b(0) === 0x52 && b(1) === 0x49 && b(2) === 0x46 && b(3) === 0x46 &&
-      b(8) === 0x57 && b(9) === 0x45 && b(10) === 0x42 && b(11) === 0x50
-    ) return "image/webp";
-    if (b(4) === 0x66 && b(5) === 0x74 && b(6) === 0x79 && b(7) === 0x70) return "image/heic";
-  } catch {}
+      ascii.includes("heic") ||
+      ascii.includes("heif") ||
+      ascii.includes("mif1") ||
+      ascii.includes("heix") ||
+      ascii.includes("hevc")
+    ) {
+      return "image/heic";
+    }
+  }
+  // Fallback — assume JPEG.
   return "image/jpeg";
+}
+
+// Run a single style prompt through Gemini and return the resulting image.
+// Returns { ok: true, image } on success or { ok: false, detail } on failure
+// so the caller can decide how to handle a partial failure.
+async function runGemini(
+  sp: { style: string; prompt: string },
+  base64: string,
+  mimeType: string
+): Promise<{ ok: boolean; image?: string; detail?: string }> {
+  try {
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": process.env.GEMINI_API_KEY || "",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: sp.prompt },
+                { inline_data: { mime_type: mimeType, data: base64 } },
+              ],
+            },
+          ],
+        }),
+      }
+    );
+
+    if (!geminiRes.ok) {
+      const errText = await geminiRes.text();
+      return { ok: false, detail: `[${sp.style}] ${errText}` };
+    }
+
+    const data = await geminiRes.json();
+    const parts = data?.candidates?.[0]?.content?.parts || [];
+    const imagePart = parts.find(
+      (p: any) => p.inline_data?.data || p.inlineData?.data
+    );
+    const outImage =
+      imagePart?.inline_data?.data || imagePart?.inlineData?.data;
+
+    if (!outImage) {
+      return {
+        ok: false,
+        detail: `[${sp.style}] No image returned from Gemini`,
+      };
+    }
+
+    return { ok: true, image: outImage };
+  } catch (err: any) {
+    return { ok: false, detail: `[${sp.style}] ${String(err?.message || err)}` };
+  }
 }
 
 // ---- Handler -------------------------------------------------------------
@@ -105,68 +207,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const type = (itemType || "top").toLowerCase();
-    const prompt = PROMPTS[type];
-    if (!prompt) {
+    const stylePrompts = PROMPTS[type];
+    if (!stylePrompts) {
       return res.status(400).json({
         error: `Unknown itemType "${type}". Use top, jeans, or shoes.`,
       });
     }
 
-    // Strip a data URL prefix if the shortcut sends one, then remove any whitespace.
+    // Strip a data URL prefix if the shortcut sends one, then remove ALL
+    // whitespace (iOS Shortcuts inserts \r\n line breaks every 64 chars,
+    // which makes Gemini's base64 decoder fail).
     const rawBase64 = image.includes(",") ? image.split(",")[1] : image;
     const base64 = rawBase64.replace(/\s+/g, "");
+
+    // Detect the real image type from the first decoded bytes. iPhones shoot
+    // HEIC by default, not JPEG, so we can't hardcode the mime type.
     const mimeType = detectMimeType(base64);
 
-    const geminiRes = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": process.env.GEMINI_API_KEY || "",
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: prompt },
-                {
-                  inline_data: {
-                    mime_type: mimeType,
-                    data: base64,
-                  },
-                },
-              ],
-            },
-          ],
-        }),
-      }
+    // Run the style(s) for this item type. Every item type currently has
+    // exactly one style, but this still works if more are added later.
+    const results = await Promise.all(
+      stylePrompts.map((sp) => runGemini(sp, base64, mimeType))
     );
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      return res
-        .status(502)
-        .json({ error: "Gemini request failed", detail: errText });
+    // If any style failed, surface the first error.
+    const failed = results.find((r) => !r.ok);
+    if (failed) {
+      return res.status(502).json({
+        error: "Gemini request failed",
+        detail: failed.detail,
+      });
     }
 
-    const data = await geminiRes.json();
-
-    // Find the image part in the response.
-    const parts = data?.candidates?.[0]?.content?.parts || [];
-    const imagePart = parts.find(
-      (p: any) => p.inline_data?.data || p.inlineData?.data
-    );
-    const outImage =
-      imagePart?.inline_data?.data || imagePart?.inlineData?.data;
-
-    if (!outImage) {
-      return res
-        .status(502)
-        .json({ error: "No image returned from Gemini", raw: data });
-    }
-
-    return res.status(200).json({ image: outImage });
+    // Return the single processed image under the "image" key, matching the
+    // shape the iOS Shortcut already expects (no Shortcut changes needed).
+    return res.status(200).json({ image: results[0].image });
   } catch (err: any) {
     return res
       .status(500)
