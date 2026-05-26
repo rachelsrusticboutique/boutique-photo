@@ -56,6 +56,7 @@ TASK:
    - Sleeves filled with subtle dimension, falling naturally at the sides or slightly outward
    - A soft hollow at the neckline showing the inside back collar, as is standard for ghost-mannequin shots
 5. Keep the garment centered and symmetrical, with a clean, professional silhouette.
+6. CRITICAL FOR REALISM — the pattern, stripes, print, or graphic must follow the fabric's three-dimensional shape: it should bend, curve, compress, and distort naturally along every fold, wrinkle, drape, and body contour, exactly as a real printed fabric does when worn. Stripes should curve with the body and bunch slightly at folds; prints should warp over the chest curve and along sleeve creases. Do NOT paint the pattern on flat or straight as if on a 2D surface — that looks fake. The pattern must wrap the form like real cloth.
 
 ${sharedRules("Output a SQUARE image (1:1 aspect ratio).")}
 OUTPUT: A clean ghost-mannequin catalog product photo on pure white, square format, suitable for a Shopify listing.`,
@@ -67,7 +68,7 @@ OUTPUT: A clean ghost-mannequin catalog product photo on pure white, square form
       style: "cleanup",
       prompt: `You are lightly retouching a product photo for an online clothing boutique. This is a real product a customer will receive, so the jeans/bottoms must stay exactly as they appear in the original photo. This is a CLEANUP task, NOT a redraw — keep my actual photo and just improve it.
 
-SUBJECT: The bottoms (jeans, pants, shorts, leggings, skirt) are the product. Keep them positioned and laid out exactly as in the original photo — do NOT rearrange, straighten, re-pose, or convert them to an idealized flat lay.
+SUBJECT: The bottoms (jeans, pants, shorts, leggings, skirt) are the product. Keep them positioned and laid out exactly as in the original photo — do NOT rearrange, straighten, re-pose, or convert them to an idealized flat lay. There must be NO mannequin, NO invisible-mannequin body form, NO torso, NO hips, NO legs, and NO ghost figure of any kind — the jeans are lying flat as fabric, not worn or shaped by any body.
 
 WHAT TO DO (light touch only):
 1. Replace whatever is behind/around the bottoms with a clean, pure white seamless background (#FFFFFF). Remove the floor, surface, and any surrounding clutter or other items.
@@ -80,6 +81,7 @@ DO NOT:
 - Change the cut, rise, inseam, leg width, or any proportions
 - Add or remove details (pockets, stitching, rivets, buttons, tags, hems)
 - Reconstruct, redraw, or re-pose the garment — preserve the original layout
+- Add ANY mannequin, body form, torso, hips, legs, or ghost figure — the jeans lie flat as fabric only
 - Over-smooth the fabric or make it look artificial
 - Add a drop shadow or cast shadow — the bottoms should sit cleanly on white
 
