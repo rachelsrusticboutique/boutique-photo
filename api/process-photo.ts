@@ -64,21 +64,30 @@ OUTPUT: A clean ghost-mannequin catalog product photo on pure white, square form
 
   jeans: [
     {
-      style: "flatlay",
-      prompt: `You are processing a product photo for an online clothing boutique. The garment must remain 100% faithful to the original — this is a real product a customer will receive.
+      style: "cleanup",
+      prompt: `You are lightly retouching a product photo for an online clothing boutique. This is a real product a customer will receive, so the jeans/bottoms must stay exactly as they appear in the original photo. This is a CLEANUP task, NOT a redraw — keep my actual photo and just improve it.
 
-SUBJECT: The bottoms (jeans, pants, shorts, leggings, skirt) are the only product being photographed. Remove all other clothing items (tops, shoes, belts unless the belt is sold with the item, accessories). Remove any mannequin, hanger, model, person, surface, or background clutter. Only the bottoms should remain.
+SUBJECT: The bottoms (jeans, pants, shorts, leggings, skirt) are the product. Keep them positioned and laid out exactly as in the original photo — do NOT rearrange, straighten, re-pose, or convert them to an idealized flat lay.
 
-TASK:
-1. Isolate the bottoms as described above.
-2. Convert the image into a FLAT LAY presentation regardless of how it was originally photographed.
-3. Present the bottoms from a directly overhead (top-down) viewpoint, laid flat and symmetrical.
-4. Lay them out neatly: centered, legs together and straight (or very slightly tapered as the cut dictates), waistband flat and fully visible at the top, with soft natural folds for a styled look. Preserve the true rise, inseam length, and leg opening width.
+WHAT TO DO (light touch only):
+1. Replace whatever is behind/around the bottoms with a clean, pure white seamless background (#FFFFFF). Remove the floor, surface, and any surrounding clutter or other items.
+2. Even out the lighting so it looks like soft, balanced studio light — remove harsh shadows, hotspots, and any color cast from the original photo.
+3. Gently REDUCE harsh or distracting wrinkles and creases, but do NOT remove them entirely — the jeans should still look like real, natural fabric with believable folds. Keep it authentic, not plastic or over-smoothed.
+4. Keep the existing position, angle, and drape of the jeans from the original photo. They do not need to be perfectly symmetrical or flat.
 
-${sharedRules("Output a TALL VERTICAL PORTRAIT image with a 9:16 aspect ratio (much taller than it is wide), to suit the long shape of jeans/pants.")}
-SHADOW OVERRIDE FOR THIS ITEM: Do NOT add any drop shadow or cast shadow beneath the jeans. The bottoms should sit cleanly on pure white with no shadow at all. This overrides the shadow instruction above.
+DO NOT:
+- Change the color, wash, fading, or distressing of the denim
+- Change the cut, rise, inseam, leg width, or any proportions
+- Add or remove details (pockets, stitching, rivets, buttons, tags, hems)
+- Reconstruct, redraw, or re-pose the garment — preserve the original layout
+- Over-smooth the fabric or make it look artificial
+- Add a drop shadow or cast shadow — the bottoms should sit cleanly on white
 
-OUTPUT: A clean overhead flat-lay catalog product photo on pure white, tall 9:16 vertical format, no shadow, suitable for a Shopify listing.`,
+FRAMING:
+- Output a TALL VERTICAL PORTRAIT image with a 9:16 aspect ratio (much taller than wide), suited to the long shape of jeans.
+- Keep the jeans centered with balanced white margins.
+
+OUTPUT: The same jeans from my photo, on a clean white background with even lighting and softened (not erased) wrinkles, tall 9:16 vertical format, no shadow.`,
     },
   ],
 
