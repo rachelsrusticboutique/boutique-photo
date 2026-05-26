@@ -171,6 +171,11 @@ async function runGemini(
               ],
             },
           ],
+          generationConfig: {
+            // Force the model to return an image, not a text description.
+            // Without this, long prompts sometimes get a written reply.
+            responseModalities: ["IMAGE"],
+          },
         }),
       }
     );
