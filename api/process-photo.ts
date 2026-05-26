@@ -10,11 +10,17 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 // ---- Prompts -------------------------------------------------------------
 
-const SHARED_RULES = `
+const sharedRules = (framing: string) => `
+FRAMING (critical for a consistent catalog):
+- ${framing}
+- Center the item horizontally and vertically.
+- The item should fill approximately 80% of the frame, with even, balanced white margins on all sides.
+- Use the SAME framing and scale for every item of this type so all product photos look uniform side by side in a catalog grid.
+
 CRITICAL RULES — DO NOT:
 - Alter the item's color, even subtly
 - Change the fabric/material texture, pattern, or print
-- Modify the fit, length, or proportions
+- Modify the fit, length, or proportions of the actual item
 - Add or remove any details (buttons, stitching, tags, trim, prints, pockets, laces, hardware)
 - Smooth, retouch, or "improve" the texture
 - Reinvent or guess at pattern details — preserve the original exactly, including stripe count, stripe spacing, floral placement, plaid alignment, and graphic positioning
@@ -25,7 +31,7 @@ Shadow: add a subtle, soft grounding shadow directly beneath the item for natura
 Color-correct the item to true-to-life only if the original has an obvious color cast from poor lighting.
 `;
 
-const TOP_INTRO = `You are processing a product photo for an online clothing boutique. The garment must remain 100% faithful to the original — this is a real product a customer will receive.
+const TOP_INTRO = `You are processing a product photo for an online WOMEN'S clothing boutique. The garment must remain 100% faithful to the original — this is a real product a customer will receive.
 
 SUBJECT: The top (shirt, blouse, sweater, tee, tank, cardigan, jacket, etc.) is the only product being photographed. Remove all other clothing items (pants, shorts, skirts, shoes, belts, hats, scarves, bags, jewelry, accessories). Remove any mannequin, hanger, model, person, surface, or background clutter. Only the top should remain.`;
 
@@ -41,17 +47,18 @@ const PROMPTS: Record<string, StylePrompt[]> = {
 
 TASK:
 1. Isolate the top as described above.
-2. Present the top as a "ghost mannequin" / invisible-mannequin product photo: the garment should look as though worn by an invisible person, viewed straight-on from the front.
-3. Give it natural three-dimensional shape:
+2. Present the top as a "ghost mannequin" / invisible-mannequin product photo: the garment should look as though worn by an invisible WOMAN, viewed straight-on from the front.
+3. Shape the garment to a feminine form — softly tapered waist, narrower shoulders, and the proportions of a women's dress form. It should clearly read as womenswear, NOT a broad, square, masculine torso.
+4. Give it natural three-dimensional shape:
    - Gentle volume through the body so it isn't pressed flat
    - Soft, natural fabric folds and drape (not stiff, not heavily wrinkled)
    - The neckline open and rounded as it would sit on a body
    - Sleeves filled with subtle dimension, falling naturally at the sides or slightly outward
    - A soft hollow at the neckline showing the inside back collar, as is standard for ghost-mannequin shots
-4. Keep the garment centered and symmetrical, with a clean, professional silhouette.
+5. Keep the garment centered and symmetrical, with a clean, professional silhouette.
 
-${SHARED_RULES}
-OUTPUT: A clean ghost-mannequin catalog product photo on pure white, suitable for a Shopify listing.`,
+${sharedRules("Output a SQUARE image (1:1 aspect ratio).")}
+OUTPUT: A clean ghost-mannequin catalog product photo on pure white, square format, suitable for a Shopify listing.`,
     },
   ],
 
@@ -68,8 +75,10 @@ TASK:
 3. Present the bottoms from a directly overhead (top-down) viewpoint, laid flat and symmetrical.
 4. Lay them out neatly: centered, legs together and straight (or very slightly tapered as the cut dictates), waistband flat and fully visible at the top, with soft natural folds for a styled look. Preserve the true rise, inseam length, and leg opening width.
 
-${SHARED_RULES}
-OUTPUT: A clean overhead flat-lay catalog product photo on pure white, suitable for a Shopify listing.`,
+${sharedRules("Output a TALL VERTICAL PORTRAIT image with a 9:16 aspect ratio (much taller than it is wide), to suit the long shape of jeans/pants.")}
+SHADOW OVERRIDE FOR THIS ITEM: Do NOT add any drop shadow or cast shadow beneath the jeans. The bottoms should sit cleanly on pure white with no shadow at all. This overrides the shadow instruction above.
+
+OUTPUT: A clean overhead flat-lay catalog product photo on pure white, tall 9:16 vertical format, no shadow, suitable for a Shopify listing.`,
     },
   ],
 
@@ -86,7 +95,7 @@ TASK:
 3. If a pair is shown, place both shoes side by side at the same angle, slightly staggered as is standard for catalog footwear, both toes pointing left.
 4. Preserve the true silhouette, heel height, sole thickness, laces, buckles, straps, and all hardware exactly.
 
-${SHARED_RULES}
+${sharedRules("Output a SQUARE image (1:1 aspect ratio).")}
 OUTPUT: A clean side/angled-profile catalog product photo on pure white, suitable for a Shopify listing.`,
     },
   ],
