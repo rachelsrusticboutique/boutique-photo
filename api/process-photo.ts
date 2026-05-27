@@ -147,10 +147,24 @@ function detectMimeType(base64: string): string {
   return "image/jpeg";
 }
 
-// Run a single style prompt through Gemini and return the resulting image.
-// Returns { ok: true, image } on success or { ok: false, detail } on failure
-// so the caller can decide how to handle a partial failure.
+// Run a single style prompt through Gemini, retrying once if the first
+// attempt returns no image (Gemini occasionally replies with text instead).
 async function runGemini(
+  sp: { style: string; prompt: string },
+  base64: string,
+  mimeType: string
+): Promise<{ ok: boolean; image?: string; detail?: string }> {
+  let last = await runGeminiOnce(sp, base64, mimeType);
+  if (!last.ok && last.detail?.includes("No image returned")) {
+    // One retry — usually succeeds the second time.
+    last = await runGeminiOnce(sp, base64, mimeType);
+  }
+  return last;
+}
+
+// Single attempt. Returns { ok: true, image } on success or
+// { ok: false, detail } on failure.
+async function runGeminiOnce(
   sp: { style: string; prompt: string },
   base64: string,
   mimeType: string
@@ -196,9 +210,14 @@ async function runGemini(
       imagePart?.inline_data?.data || imagePart?.inlineData?.data;
 
     if (!outImage) {
+      // Gemini sometimes returns a text description instead of an image.
+      // Capture whatever text it sent and the finish reason so we can see why.
+      const textPart = parts.find((p: any) => typeof p.text === "string");
+      const finishReason = data?.candidates?.[0]?.finishReason || "unknown";
+      const said = textPart?.text ? ` Gemini said: "${textPart.text.slice(0, 300)}"` : "";
       return {
         ok: false,
-        detail: `[${sp.style}] No image returned from Gemini`,
+        detail: `[${sp.style}] No image returned (finishReason: ${finishReason}).${said}`,
       };
     }
 
